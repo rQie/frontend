@@ -1,90 +1,95 @@
-import { useState } from 'react'
+import React, { Component } from 'react'
 import axios from 'axios'
-import { gql } from 'apollo-boost'
-import { useQuery } from '@apollo/react-hooks'
 
-const AddBarcode = () => {
-  const [modifiedData, setModifiedData] = useState({
-    name: '',
+class AddModelMeters extends Component {
+  state = {
     modelmeter: 'no',
-  })
-  const [errorMeterbarcodes, setErrorMeterbarcodes] = useState(null)
-
-  const handleChange = ({ target: { name, value } }) => {
-    setModifiedData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    modelmeters: [],
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    try {
-      const response = await axios.post(
-        'http://localhost:1337/meterbarcodes',
-        modifiedData,
-      )
-      console.log(response)
-    } catch (error) {
-      setErrorMeterbarcodes(error)
-    }
-  }
-
-  if (errorMeterbarcodes) {
-    return (
-      <div>An error occured (meterbarcodes): {errorMeterbarcodes.message}</div>
+  handleChange = (event) => {
+    console.log(
+      'AddModelMeters.handleChange event.target.name',
+      event.target.name,
     )
+    console.log(
+      'AddModelMeters.handleChange event.target.value',
+      event.target.value,
+    )
+
+    this.setState({ [event.target.name]: event.target.value })
   }
 
-  const QUERY = gql`
-    {
-      modelmeters {
-        id
-        model
+  handleSubmit = async (event) => {
+    event.preventDefault()
+    const { barcode, modelmeter } = this.state
+
+    console.log('AddModelMeters.handleSubmit modelmeter', modelmeter)
+    console.log('AddModelMeters.handleSubmit barcode', barcode)
+    if (modelmeter != 'no') {
+      const data = {
+        barcode,
+        modelmeter: parseInt(modelmeter),
       }
+
+      const add_stock_res = await axios({
+        method: 'POST',
+        url: 'http://localhost:1337/meterbarcodes',
+        data,
+      })
+
+      console.log('AddModelMeters.handleSubmit add_stock_res', add_stock_res)
+      if (add_stock_res.status === 200) {
+        alert('Success')
+        window.location = window.location
+      }
+    } else {
+      alert('No modelmeter chosen')
+      return
     }
-  `
+  }
 
-  const { loading, error, data } = useQuery(QUERY)
-  if (error) return 'Error loading restaurants'
-  //if restaurants are returned from the GraphQL query, run the filter query
-  //and set equal to variable restaurantSearch
-  if (loading) return <h1>Fetching</h1>
-  const { modelmeters } = data
-  return (
-    <div>
-      <form onSubmit={handleSubmit}>
-        <h3>Barcode</h3>
-        <br />
+  async componentDidMount() {
+    const modelmetersRes = await axios({
+      method: 'GET',
+      url: 'http://localhost:1337/modelmeters', //product
+    })
 
-        <select
-          onChange={handleChange}
-          name="modelmeter"
-          value={modifiedData.modelmeter}
-        >
-          <option modelmeter="no">Please select a product</option>
-          {modelmeters.map((res) => (
-            <option key={res.id} value={modelmeters.id}>
-              {res.model}
-            </option>
-          ))}
-        </select>
-        <label>
-          Barcode:
+    const modelmeters = modelmetersRes.data
+    console.log('modelmeters', modelmeters)
+
+    this.setState({ modelmeters })
+  }
+
+  render() {
+    const { barcode, modelmeter, modelmeters } = this.state
+    return (
+      <div className="AddModelMeters">
+        <form onSubmit={this.handleSubmit}>
+          <select
+            onChange={this.handleChange}
+            name="modelmeter"
+            value={modelmeter}
+          >
+            <option value="no">Please select a modelmeter</option>
+            {modelmeters.map((modelmeter, i) => (
+              <option key={i} value={modelmeter.id}>
+                {modelmeter.model}
+              </option>
+            ))}
+          </select>
           <input
+            onChange={this.handleChange}
             type="text"
             name="barcode"
-            value={modifiedData.barcode}
-            onChange={handleChange}
+            value={barcode}
           />
-        </label>
 
-        <br />
-        <button type="submit">Submit</button>
-      </form>
-    </div>
-  )
+          <button>Submit</button>
+        </form>
+      </div>
+    )
+  }
 }
 
-export default AddBarcode
+export default AddModelMeters
